@@ -13,6 +13,8 @@ Build and test your three tools in `tools.py` first. Then come here.
     python agent.py          runs both example paths below
 """
 
+import re
+
 import config
 import trace
 from tools import search_listings, suggest_outfit, create_fit_card
@@ -107,7 +109,64 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     """
     session = new_session(query, wardrobe)
 
-    # TODO: delete these two lines and build the loop.
+    count = 0
+    count += 1
+    trace.check_iterations(count)
+
+    # --- Step 3: parse the query ---
+    # Simple, explainable parsing: regex for a price ceiling ("$30", "under 30"),
+    # and a size token pulled from a small set of known size words/patterns.
+    description = query
+    max_price = None
+    size = None
+
+    price_match = re.search(r"\$?(\d+(?:\.\d+)?)", query)
+    if price_match and ("under" in query.lower() or "$" in query):
+        max_price = float(price_match.group(1))
+        description = description.replace(price_match.group(0), "")
+
+    size_match = re.search(
+        r"\bsize\s+([a-zA-Z0-9/]+)\b|\b(xs|s|m|l|xl|xxl)\b",
+        query,
+        re.IGNORECASE,
+    )
+    if size_match:
+        size = (size_match.group(1) or size_match.group(2)).upper()
+        description = re.sub(re.escape(size_match.group(0)), "", description, flags=re.IGNORECASE)
+
+    for noise in ["under", "size", "$"]:
+        description = description.replace(noise, "")
+    description = " ".join(description.split())
+
+    session["parsed"] = {
+        "description": description,
+        "size": size,
+        "max_price": max_price,
+    }
+
+    # --- Step 4: search ---
+    results = search_listings(description, size=size, max_price=max_price)
+    session["search_results"] = results
+
+    # THIS IS THE BRANCH: stop here if nothing matched.
+    if not results:
+        session["error"] = (
+            "No listings matched that description. Try a higher price limit, "
+            "a different size, or fewer/different keywords."
+        )
+        return session
+
+    # --- Step 5: choose an item ---
+    session["selected_item"] = results[0]
+
+    # --- Step 6: suggest an outfit ---
+    session["outfit_suggestion"] = suggest_outfit(session["selected_item"], wardrobe)
+
+    # --- Step 7: write the caption ---
+    session["fit_card"] = create_fit_card(session["outfit_suggestion"], session["selected_item"])
+
+    # --- Step 8: return ---
+    return session
     session["error"] = "The planning loop isn't built yet — see the TODO in agent.py."
     return session
 
