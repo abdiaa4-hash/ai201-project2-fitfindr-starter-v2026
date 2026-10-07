@@ -25,9 +25,13 @@ Given a query that matches at least one listing, the agent completes all three
 tool calls and returns a fit card — in at least 4 of 5 tries.
 
 **Why this target:**
-<!-- Why 4 of 5 and not 5 of 5? Something about your search, probably —
-     "my search is a plain keyword match and some phrasings will miss" is a
-     real answer. -->
+My search_listings scores by literal keyword overlap between the query and each
+listing's title/description/category/style_tags. It doesn't do any fuzzy or
+semantic matching, so a query phrased very differently from how a listing
+describes itself (e.g. using a synonym the listing never uses) could score
+zero and miss, even though a human would call it a match. 4 of 5 leaves room
+for exactly that kind of literal-matching miss without pretending the search
+is smarter than it is.
 
 ---
 
@@ -37,65 +41,59 @@ Given a query that matches no listings, the agent stops before calling
 `suggest_outfit` and returns a message naming what to change — 5 of 5 tries.
 
 **Why this target:**
-<!-- Why is 5 of 5 reasonable here when criterion 1 isn't? What's different
-     about this path? -->
+Unlike criterion 1, this isn't a judgment call about whether a match is good
+enough — it's a direct code branch: `if not results:`. search_listings either
+returns an empty list or it doesn't, and my loop checks that exact condition
+before calling suggest_outfit. There's no fuzzy matching involved in the
+branch itself, so this should hold every single time, regardless of how the
+search's own matching quality varies.
 
 ---
 
 ## 3. Something about state
 
-<!-- YOU WRITE THIS ONE.
-
-     How would you know that the item your search found is the same item the
-     next tool received? Name something countable or observable.
-
-     This is the criterion people find hardest, because state failure doesn't
-     look like state failure — it looks like a tool problem. Something that
-     compares session["selected_item"] against what actually reached
-     suggest_outfit is the shape you're after. -->
-
-
+For 5 different queries that return at least one result, the `id` field of
+`session["selected_item"]` matches the `id` of the listing dict actually
+passed into `suggest_outfit()` — in 5 of 5 runs.
 
 **Why this target:**
-
+This is a direct assignment inside my own code (`session["selected_item"] =
+results[0]`, then that same value is passed straight into `suggest_outfit`),
+not a model decision, so there's no reason it should ever vary. If it fails,
+it means state is being dropped or overwritten somewhere between steps, which
+is exactly the kind of bug this criterion exists to catch.
 
 
 ---
 
 ## 4. Something about the fit card
 
-<!-- YOU WRITE THIS ONE.
-
-     The fit card calls a model, so the same input can produce different words
-     each time. That's not a bug — it's the nature of the tool. So what would
-     make it acceptable?
-
-     Think about what you'd actually be unhappy to see. A caption that never
-     mentions the price? Two different items producing the same opening
-     sentence? A card longer than a caption anyone would post? Any of those can
-     be turned into a number. -->
-
-
+For 5 different items, the generated fit card mentions the item's price
+(as a dollar amount) somewhere in the text — in at least 4 of 5 runs.
 
 **Why this target:**
-
+My create_fit_card() prompt explicitly instructs the model to mention the
+price once, but it's still a model call with some temperature, so there's a
+real chance it paraphrases the price away entirely (e.g. "a steal" instead of
+a number) on an unlucky run. 4 of 5 acknowledges that risk while still holding
+the caption to a concrete, checkable standard rather than just "sounds nice."
 
 
 ---
 
 ## 5. Your choice
 
-<!-- YOU WRITE THIS ONE TOO.
-
-     Pick something you actually care about getting right. Speed, the empty
-     wardrobe path, what happens when the model can't be reached, whether the
-     search respects a price ceiling — anything, as long as it names a number
-     or an observable outcome. -->
-
-
+Given an empty wardrobe (`{"items": []}`), `suggest_outfit()` still returns a
+non-empty string of general styling advice rather than an empty string,
+an exception, or a request for the user's wardrobe — in 5 of 5 runs.
 
 **Why this target:**
-
+The spec explicitly calls out that unit 4 will trigger this path on purpose,
+so I wanted a criterion that actually exercises it now rather than assuming
+it works. It's checkable with a plain truthiness/length check on the return
+value, and I already confirmed it behaves this way once by hand — this
+criterion is about confirming that holds consistently, not just on one lucky
+run.
 
 
 ---
