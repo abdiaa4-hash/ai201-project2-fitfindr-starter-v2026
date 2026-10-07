@@ -78,8 +78,35 @@ def search_listings(
     Test it from a terminal before you move on:
         python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
     """
-    # TODO: replace this with your implementation
-    return []
+    listings = load_listings()
+
+    filtered = []
+    for item in listings:
+        if max_price is not None and item["price"] > max_price:
+            continue
+        if size is not None:
+            item_size = item["size"].strip().lower()
+            query_size = size.strip().lower()
+            if item_size != query_size:
+                continue
+        filtered.append(item)
+
+    keywords = [w for w in description.lower().split() if w]
+
+    scored = []
+    for item in filtered:
+        haystack = " ".join([
+            item["title"],
+            item["description"],
+            item["category"],
+            " ".join(item["style_tags"]),
+        ]).lower()
+        score = sum(1 for kw in keywords if kw in haystack)
+        if score > 0:
+            scored.append((score, item))
+
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return [item for _, item in scored[:config.SEARCH_RESULT_LIMIT]]
 
 
 # ── Tool 2: suggest_outfit ────────────────────────────────────────────────────
@@ -112,8 +139,34 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
     Test it from a terminal before you move on:
         python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
     """
-    # TODO: replace this with your implementation
-    return ""
+    wardrobe_items = wardrobe.get("items", [])
+
+    item_description = (
+        f"{new_item['title']} ({new_item['category']}, "
+        f"colors: {', '.join(new_item['colors'])}, "
+        f"style: {', '.join(new_item['style_tags'])})"
+    )
+
+    if not wardrobe_items:
+        prompt = (
+            f"Someone is considering buying this thrifted item: {item_description}.\n\n"
+            "They don't have any wardrobe info on file. Suggest one or two general "
+            "outfit ideas for this item - what kind of pieces would pair well with it, "
+            "described generically (not from a specific closet)."
+        )
+    else:
+        wardrobe_description = "\n".join(
+            f"- {w['name']} ({w['category']}, colors: {', '.join(w.get('colors', []))})"
+            for w in wardrobe_items
+        )
+        prompt = (
+            f"Someone is considering buying this thrifted item: {item_description}.\n\n"
+            f"Here is what they already own:\n{wardrobe_description}\n\n"
+            "Suggest one or two specific outfits combining the new item with pieces "
+            "they already own. Name the actual pieces from their wardrobe."
+        )
+
+    return generate(prompt)
 
 
 # ── Tool 3: create_fit_card ───────────────────────────────────────────────────
@@ -152,5 +205,21 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
     Test it from a terminal before you move on:
         python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('jeans and white sneakers', load_listings()[0]))"
     """
-    # TODO: replace this with your implementation
-    return ""
+    if not outfit or not outfit.strip():
+        return (
+            f"Found {new_item['title']} (${new_item['price']:.2f} on "
+            f"{new_item['platform']}), but couldn't generate styling ideas for it."
+        )
+
+    prompt = (
+        f"Write a short, casual social media caption (2-4 sentences) for someone "
+        f"posting about a thrifted find.\n\n"
+        f"Item: {new_item['title']}\n"
+        f"Price: ${new_item['price']:.2f}\n"
+        f"Platform: {new_item['platform']}\n"
+        f"Styling idea: {outfit}\n\n"
+        "Mention the item and its price and platform once each. Make it sound "
+        "like a real post, specific about the vibe, not a product description."
+    )
+
+    return generate(prompt)
