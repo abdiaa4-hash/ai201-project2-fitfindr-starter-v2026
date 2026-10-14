@@ -145,7 +145,12 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     }
 
     # --- Step 4: search ---
-    results = search_listings(description, size=size, max_price=max_price)
+    from mcp_client import call_tool
+    results = call_tool("search_listings", {
+        "description": description,
+        "size": size,
+        "max_price": max_price,
+    })
     session["search_results"] = results
 
     # THIS IS THE BRANCH: stop here if nothing matched.
@@ -165,10 +170,7 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     # --- Step 7: write the caption ---
     session["fit_card"] = create_fit_card(session["outfit_suggestion"], session["selected_item"])
 
-    # --- Step 8: return ---
-    return session
-    session["error"] = "The planning loop isn't built yet — see the TODO in agent.py."
-    return session
+  
 
 
 # ── running it directly ───────────────────────────────────────────────────────
