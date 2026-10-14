@@ -30,23 +30,27 @@ SCENARIOS = [
     },
     {
         # A user with nothing saved. One of unit 4's three failure modes.
+        # Also criterion 5: suggest_outfit still returns non-empty advice.
         "name": "empty wardrobe",
         "query": "denim jacket under $50",
         "wardrobe": "empty",
-        "criterion": None,
+        "criterion": 5,
     },
-    # TODO: add what your criteria 3, 4 and 5 need.
-    #
-    # Set "criterion" to the number in criteria.md that the scenario tests.
-    # "criterion": None means a diagnostic run — useful to have, but it isn't
-    # one of your five, and run_eval.py marks it as such in the table.
-    #
-    # For a state criterion, any normal query works — what you're checking is
-    # what ends up in the session, not what the user typed.
-    #
-    # For a fit-card criterion, you probably want the SAME query listed more
-    # than once, or several different items, depending on what your criterion
-    # actually says.
+    {
+        # Criterion 3: state - the selected item's id should match what
+        # actually reached suggest_outfit. Any normal matching query works.
+        "name": "state check - selected item id",
+        "query": "vintage graphic tee under $30",
+        "wardrobe": "example",
+        "criterion": 3,
+    },
+    {
+        # Criterion 4: the fit card should mention the item's price.
+        "name": "fit card mentions price",
+        "query": "corduroy pants",
+        "wardrobe": "example",
+        "criterion": 4,
+    },
 ]
 
 WARDROBES = ("example", "empty")
