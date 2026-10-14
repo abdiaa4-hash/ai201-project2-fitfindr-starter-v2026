@@ -101,3 +101,28 @@ keyword description passed to `search_listings`.
 ## Sample Run
 
 **One full query**
+
+**The three tools, tested one at a time**
+
+```
+$ python -c "from tools import search_listings; print(search_listings(graphic tee, max_price=30))"
+7 matches, best match Y2K Baby Tee
+```
+
+```
+$ python -c "from tools import suggest_outfit"
+Two outfit combinations using wardrobe pieces.
+```
+
+```
+$ python -c "from tools import create_fit_card"
+Still obsessed with these vintage jeans, scored on Depop for 38 dollars.
+```
+
+---
+
+## How I Used AI
+
+Moment 1: Asked for help implementing search_listings. Got exact case-insensitive size matching. Flagged that M wont match S slash M as a known trade-off.
+
+Moment 2: Asked for help wiring suggest_outfit to format wardrobe items. Got code using title key, which crashed since wardrobe items use name not title. Fixed once confirmed.
