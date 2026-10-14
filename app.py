@@ -192,7 +192,7 @@ def build_parser():
     p_ask.set_defaults(func=cmd_ask)
 
     return parser
-
+## Main entry point for the FitFindr CLI application
 
 def main():
     args = build_parser().parse_args()
