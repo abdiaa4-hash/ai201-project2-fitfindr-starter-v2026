@@ -144,14 +144,24 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         "max_price": max_price,
     }
 
+    trace.step("parse_query", inputs={"query": query}, returned=session["parsed"])
+
     # --- Step 4: search ---
-    from mcp_client import call_tool
-    results = call_tool("search_listings", {
-        "description": description,
-        "size": size,
-        "max_price": max_price,
-    })
+    
+    try:
+        from mcp_client import call_tool
+        results = call_tool("search_listings", {
+            "description": description,
+            "size": size,
+            "max_price": max_price,
+        })
+    except ModelUnavailable as e:
+        session["error"] = f"The model couldn't be reached: {e}"
+        trace.step("search_listings", inputs=session["parsed"], note="model unavailable, stopping")
+        return session
+
     session["search_results"] = results
+    trace.step("search_listings", inputs=session["parsed"], returned=results)
 
     # THIS IS THE BRANCH: stop here if nothing matched.
     if not results:
@@ -170,7 +180,8 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     # --- Step 7: write the caption ---
     session["fit_card"] = create_fit_card(session["outfit_suggestion"], session["selected_item"])
 
-  
+    # --- Step 8: return ---
+    return session
 
 
 # ── running it directly ───────────────────────────────────────────────────────
