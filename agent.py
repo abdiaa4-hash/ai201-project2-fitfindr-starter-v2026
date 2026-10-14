@@ -173,12 +173,25 @@ def run_agent(query: str, wardrobe: dict) -> dict:
 
     # --- Step 5: choose an item ---
     session["selected_item"] = results[0]
+    trace.step("select_item", inputs=results, returned=session["selected_item"])
 
     # --- Step 6: suggest an outfit ---
-    session["outfit_suggestion"] = suggest_outfit(session["selected_item"], wardrobe)
+    try:
+        session["outfit_suggestion"] = suggest_outfit(session["selected_item"], wardrobe)
+        trace.step("suggest_outfit", inputs=session["selected_item"], returned=session["outfit_suggestion"])
+    except ModelUnavailable as e:
+        session["error"] = f"The model couldn't be reached: {e}"
+        trace.step("suggest_outfit", note="model unavailable, stopping")
+        return session
 
     # --- Step 7: write the caption ---
-    session["fit_card"] = create_fit_card(session["outfit_suggestion"], session["selected_item"])
+    try:
+        session["fit_card"] = create_fit_card(session["outfit_suggestion"], session["selected_item"])
+        trace.step("create_fit_card", inputs=session["outfit_suggestion"], returned=session["fit_card"])
+    except ModelUnavailable as e:
+        session["error"] = f"The model couldn't be reached: {e}"
+        trace.step("create_fit_card", note="model unavailable, stopping")
+        return session
 
     # --- Step 8: return ---
     return session
